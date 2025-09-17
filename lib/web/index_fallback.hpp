@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ESPWATERTEST_FALLBACK_HPP
+#define ESPWATERTEST_FALLBACK_HPP
 #include <Arduino.h>
 
 static const char INDEX_FALLBACK[] PROGMEM = R"HTML(
@@ -30,3 +31,4 @@ document.getElementById('f').addEventListener('submit',save);
 </script>
 </body></html>
 )HTML";
+#endif

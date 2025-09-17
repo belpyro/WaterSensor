@@ -1,27 +1,121 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><title>ESP Config</title>
-<style>body{font-family:system-ui;margin:2rem;max-width:680px}label{display:block;margin:.6rem 0 .2rem}input{width:100%;padding:.5rem}button{margin-top:1rem;padding:.6rem 1rem}</style>
-</head><body>
-<h2>ESP8266 Config</h2>
-<form id="f">
-  <label>Device Name</label>
-  <input id="deviceName" required>
-  <label>MQTT Server</label>
-  <input id="mqttServer" required>
-  <label>MQTT Port</label>
-  <input id="mqttPort" type="number" value="1883">
-  <label><input id="alarmEnabled" type="checkbox"> Alarm Enabled</label>
-  <button type="submit">Save</button>
-</form>
-<script>
-fetch('/config').then(r=>r.json()).then(j=>{
-  deviceName.value=j.deviceName||''; mqttServer.value=j.mqttServer||''; mqttPort.value=j.mqttPort||1883; alarmEnabled.checked=!!j.alarmEnabled;
-});
-async function save(e){e.preventDefault();
-  const body={deviceName:deviceName.value,mqttServer:mqttServer.value,mqttPort:+mqttPort.value,alarmEnabled:alarmEnabled.checked};
-  const res=await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(res.ok) alert('Saved!'); else alert('Error');
-}
-document.getElementById('f').addEventListener('submit',save);
-</script>
-</body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP Config</title>
+  <style>
+    :root{--bg:#fff;--fg:#111;--muted:#6b7280;--card:#fafafa;--bd:#e5e7eb;--accent:#2563eb;--accent-fg:#fff;--error:#dc2626;--ok:#16a34a}
+    @media (prefers-color-scheme: dark){:root{--bg:#0b0f14;--fg:#e5e7eb;--muted:#9ca3af;--card:#131923;--bd:#1f2937;--accent:#3b82f6;--accent-fg:#0b0f14}}
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;line-height:1.4}
+    .container{max-width:720px;margin:0 auto;padding:24px}
+    h2{margin:0 0 16px;font-size:1.6rem}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:540px){.grid{grid-template-columns:1fr}}
+    label{font-size:.9rem;color:var(--muted);margin:.25rem 0 .25rem 2px;display:block}
+    input[type="text"],input[type="number"],input[type="password"],input[type="file"]{width:100%;padding:.6rem .7rem;border:1px solid var(--bd);border-radius:10px;background:transparent;color:var(--fg)}
+    input[type="checkbox"]{transform:translateY(1px)}
+    .row{margin:.4rem 0 1rem}
+    .inline{display:flex;align-items:center;gap:.6rem}
+    .card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;margin:16px 0}
+    .btn{appearance:none;border:none;background:var(--accent);color:var(--accent-fg);padding:.7rem 1.1rem;border-radius:10px;font-weight:600;cursor:pointer}
+    .btn:active{transform:translateY(1px)}
+    .btn.secondary{background:transparent;color:var(--fg);border:1px solid var(--bd)}
+    .status{margin-left:.75rem;font-weight:600}
+    .status.ok{color:var(--ok)}
+    .status.err{color:var(--error)}
+    .footer{margin-top:24px;color:var(--muted);font-size:.9rem}
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h2>ESP8266 Config</h2>
+
+    <section class="card">
+      <form id="f">
+        <div class="grid">
+          <div class="row">
+            <label for="deviceName">Device Name</label>
+            <input id="deviceName" type="text" autocomplete="off" required>
+          </div>
+          <div class="row">
+            <label for="mqttServer">MQTT Server</label>
+            <input id="mqttServer" type="text" inputmode="url" autocomplete="off" required>
+          </div>
+          <div class="row">
+            <label for="mqttPort">MQTT Port</label>
+            <input id="mqttPort" type="number" inputmode="numeric" value="1883" min="1" max="65535">
+          </div>
+          <div class="row inline" style="align-items:center">
+            <input id="alarmEnabled" type="checkbox">
+            <label for="alarmEnabled" style="margin:0">Alarm Enabled</label>
+          </div>
+        </div>
+        <div class="row" style="margin-top:.5rem">
+          <button class="btn" type="submit">Save</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 .5rem;font-size:1.1rem">Firmware Update</h3>
+      <p style="margin:.25rem 0 .75rem;color:var(--muted)">Upload compiled firmware <code>.bin</code> to flash over Wi‑Fi.</p>
+      <form id="fwform" method="POST" action="/update" enctype="multipart/form-data">
+        <div class="inline" style="flex-wrap:wrap;gap:.5rem">
+          <input type="file" name="update" id="fwfile" accept=".bin" required style="max-width:100%">
+          <button class="btn secondary" type="submit">Upload</button>
+          <span id="fwstatus" class="status"></span>
+        </div>
+      </form>
+    </section>
+
+    <div class="footer">Tip: this page is mobile‑friendly. Add it to your Home Screen for quick access.</div>
+  </main>
+
+  <script>
+    const fwform = document.getElementById('fwform');
+    const fwfile = document.getElementById('fwfile');
+    const fwstatus = document.getElementById('fwstatus');
+
+    fwform.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!fwfile.files.length) return;
+      const fd = new FormData();
+      fd.append('update', fwfile.files[0]);
+      fwstatus.textContent = 'Uploading...';
+      fwstatus.className = 'status';
+      try {
+        const res = await fetch('/update', { method: 'POST', body: fd });
+        const txt = await res.text();
+        fwstatus.textContent = (res.ok ? 'OK: ' : 'Error: ') + txt;
+        fwstatus.className = 'status ' + (res.ok ? 'ok' : 'err');
+      } catch (err) {
+        fwstatus.textContent = 'Network error: ' + err;
+        fwstatus.className = 'status err';
+      }
+    });
+  </script>
+
+  <script>
+    fetch('/config').then(r=>r.json()).then(j=>{
+      deviceName.value = j.deviceName || '';
+      mqttServer.value = j.mqttServer || '';
+      mqttPort.value   = j.mqttPort   || 1883;
+      alarmEnabled.checked = !!j.alarmEnabled;
+    });
+    async function save(e){
+      e.preventDefault();
+      const body={
+        deviceName: deviceName.value,
+        mqttServer: mqttServer.value,
+        mqttPort: +mqttPort.value,
+        alarmEnabled: alarmEnabled.checked
+      };
+      const res = await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      if(res.ok) alert('Saved!'); else alert('Error');
+    }
+    document.getElementById('f').addEventListener('submit',save);
+  </script>
+</body>
+</html>

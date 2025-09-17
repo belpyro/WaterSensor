@@ -1,13 +1,16 @@
+#ifndef ESPWATERTEST_CONFIG_HPP
+#define ESPWATERTEST_CONFIG_HPP
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <config_fs.hpp>
+#include <constants.hpp>
 
 namespace cfgfs {
   const char* CONFIG_PATH = "/config.json";
 
   static void writeDefaults(AppConfig& cfg) {
-    strlcpy(cfg.deviceName, "esp8266", sizeof(cfg.deviceName));
-    strlcpy(cfg.mqttServer, "mqtt.local", sizeof(cfg.mqttServer));
+    strlcpy(cfg.deviceName, MQTT_CLIENT_ID, sizeof(cfg.deviceName));
+    strlcpy(cfg.mqttServer, DEFAULT_MQTT_HOST, sizeof(cfg.mqttServer));
     cfg.mqttPort = 1883;
     cfg.alarmEnabled = true;
   }
@@ -30,7 +33,7 @@ namespace cfgfs {
     }
     File f = LittleFS.open(CONFIG_PATH, "r");
     if (!f) { Serial.println("[FS] open read failed"); writeDefaults(cfg); return; }
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     auto err = deserializeJson(doc, f);
     f.close();
     if (err) {
@@ -38,8 +41,8 @@ namespace cfgfs {
       writeDefaults(cfg);
       return;
     }
-    strlcpy(cfg.deviceName, doc["deviceName"] | "esp8266", sizeof(cfg.deviceName));
-    strlcpy(cfg.mqttServer, doc["mqttServer"] | "mqtt.local", sizeof(cfg.mqttServer));
+    strlcpy(cfg.deviceName, doc["deviceName"] | MQTT_CLIENT_ID, sizeof(cfg.deviceName));
+    strlcpy(cfg.mqttServer, doc["mqttServer"] | DEFAULT_MQTT_HOST, sizeof(cfg.mqttServer));
     cfg.mqttPort = doc["mqttPort"] | 1883;
     cfg.alarmEnabled = doc["alarmEnabled"] | true;
     Serial.println("[FS] Config loaded");
@@ -48,7 +51,7 @@ namespace cfgfs {
   void save(const AppConfig& cfg) {
     File f = LittleFS.open(CONFIG_PATH, "w");
     if (!f) { Serial.println("[FS] open write failed"); return; }
-    DynamicJsonDocument doc(512);
+    JsonDocument doc;
     doc["deviceName"]   = cfg.deviceName;
     doc["mqttServer"]   = cfg.mqttServer;
     doc["mqttPort"]     = cfg.mqttPort;
@@ -58,3 +61,4 @@ namespace cfgfs {
     Serial.println("[FS] Config saved");
   }
 }
+#endif

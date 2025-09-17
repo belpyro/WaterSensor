@@ -23,7 +23,7 @@ namespace mqt {
         return false;
       }
     }
-    StaticJsonDocument<160> doc;
+    JsonDocument doc;
     doc["device"] = HOSTNAME;
     doc["ssid"]   = WiFi.SSID();
     doc["ip"]     = WiFi.localIP().toString();
@@ -37,4 +37,17 @@ namespace mqt {
     s_cli.disconnect();
     return ok;
   }
+
+    bool publishActive(){
+        if (!s_cli.connected()) {
+        if (!s_cli.connect(MQTT_CLIENT_ID)) {
+          Serial.printf("[MQTT] connect failed, rc=%d\n", s_cli.state());
+          return false;
+        }
+      }
+      bool ok = s_cli.publish(MQTT_TOPIC_ACTIVE, "OK", true);
+      Serial.printf("[MQTT] publish active status: %s\n", ok ? "OK" : "FAIL");
+      s_cli.disconnect();
+      return ok;
+    }
 }

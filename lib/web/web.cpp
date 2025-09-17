@@ -8,6 +8,15 @@
 
 static ESP8266WebServer server(80);
 static AppConfig current;
+static ESP8266HTTPUpdateServer httpUpdater;
+
+static void setupWebOta() {
+#if WEB_OTA_ENABLE
+  // защищаем загрузчик BasicAuth'ом теми же логином/паролем
+  httpUpdater.setup(&server, "/update", BASIC_AUTH_USER, BASIC_AUTH_PASS);
+  Serial.println("[HTTP] Web OTA at /update");
+#endif
+}
 
 static bool ensureAuth() {
   if (!server.authenticate(BASIC_AUTH_USER, BASIC_AUTH_PASS)) {
@@ -28,7 +37,7 @@ static void handleRoot() {
 }
 
 static void handleGetConfig() {
-  DynamicJsonDocument doc(512);
+  JsonDocument doc;
   doc["deviceName"]   = current.deviceName;
   doc["mqttServer"]   = current.mqttServer;
   doc["mqttPort"]     = current.mqttPort;
@@ -41,7 +50,7 @@ static void handlePostConfig() {
   if (!ensureAuth()) return;
   if (!server.hasArg("plain")) { server.send(400, "text/plain", "no body"); return; }
 
-  DynamicJsonDocument doc(1024);
+  JsonDocument doc;
   auto err = deserializeJson(doc, server.arg("plain"));
   if (err) { server.send(400, "text/plain", String("bad json: ")+err.c_str()); return; }
 
@@ -76,6 +85,7 @@ namespace web {
     server.on("/reboot", HTTP_POST, handleReboot);
     server.onNotFound([](){ server.send(404, "text/plain", "Not Found"); });
     server.begin();
+    setupWebOta();
     Serial.println("[HTTP] Server started");
   }
 
