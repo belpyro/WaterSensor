@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"   # MQTT
+      # - "9001:9001" # WebSockets (если включишь в конфиге)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+
+  homebridge:
+    image: homebridge/homebridge:latest
+    restart: always
+    network_mode: host
+    volumes:
+      - ./homebridge:/homebridge
+    logging:
+      driver: json-file
+      options:
+        max-size: "10mb"
+        max-file: "1"
+    depends_on:
+        - mosquitto

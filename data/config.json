@@ -1,0 +1,6 @@
+{
+  "deviceName": "WaterSensor",
+  "mqttServer": "192.168.1.103",
+  "mqttPort": 1883,
+  "alarmEnabled": true
+}

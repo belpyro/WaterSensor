@@ -1,0 +1,32 @@
+#pragma once
+#include <Arduino.h>
+
+static const char INDEX_FALLBACK[] PROGMEM = R"HTML(
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ESP Config</title>
+<style>body{font-family:system-ui;margin:2rem;max-width:680px}label{display:block;margin:.6rem 0 .2rem}input{width:100%;padding:.5rem}button{margin-top:1rem;padding:.6rem 1rem}</style>
+</head><body>
+<h2>ESP8266 Config</h2>
+<form id="f">
+  <label>Device Name</label>
+  <input id="deviceName" required>
+  <label>MQTT Server</label>
+  <input id="mqttServer" required>
+  <label>MQTT Port</label>
+  <input id="mqttPort" type="number" value="1883">
+  <label><input id="alarmEnabled" type="checkbox"> Alarm Enabled</label>
+  <button type="submit">Save</button>
+</form>
+<script>
+fetch('/config').then(r=>r.json()).then(j=>{
+  deviceName.value=j.deviceName||''; mqttServer.value=j.mqttServer||''; mqttPort.value=j.mqttPort||1883; alarmEnabled.checked=!!j.alarmEnabled;
+});
+async function save(e){e.preventDefault();
+  const body={deviceName:deviceName.value,mqttServer:mqttServer.value,mqttPort:+mqttPort.value,alarmEnabled:alarmEnabled.checked};
+  const res=await fetch('/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(res.ok) alert('Saved!'); else alert('Error');
+}
+document.getElementById('f').addEventListener('submit',save);
+</script>
+</body></html>
+)HTML";
