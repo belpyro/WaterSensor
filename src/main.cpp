@@ -11,6 +11,7 @@
 #include <power.hpp>
 #include "ota.hpp"
 #include "button.hpp"
+#include "capcal.hpp"
 
 #define WM_DEBUG_LEVEL
 
@@ -24,8 +25,8 @@ void setup() {
   delay(200);
   Serial.printf("Booting v%s\n", APP_VERSION);
 
-  pinMode(PIN_VREF, OUTPUT);
-  digitalWrite(PIN_VREF, HIGH);
+  // pinMode(PIN_VREF, OUTPUT);
+  // digitalWrite(PIN_VREF, HIGH);
 
   cfgfs::beginFS();
   cfgfs::load(g_cfg);
@@ -34,31 +35,21 @@ void setup() {
   mdnsu::setup();
   ota::begin();
   web::begin(&g_cfg);
+  cap::begin(PIN_VREF);
 
-  sensor::begin(PIN_VREF);
+  // sensor::begin(PIN_VREF);
   button::begin(PIN_LEAK_TEST);
   buzzer::begin(PIN_BUZZER);
-
-  // Первичное чтение и звуковая индикация
-  // g_leak = sensor::readLeak(ADC_LEAK_THRESHOLD, DEBUG_FORCE_LEAK) || button::testLeak;
-  // buzzer::setLeak(g_leak);
-  // if (g_leak) tone(PIN_BUZZER, BUZZ_FREQ_HZ, 200);
 
   // Публикация статуса в MQTT один раз при старте
   mqt::configure(g_cfg);
   (void)mqt::publishActive();
 
   Serial.printf("Open http://%s.local/ or http://%s/\n", MDNS_NAME, WiFi.localIP().toString().c_str());
-  tone(PIN_BUZZER, BUZZ_FREQ_HZ, 10);
 
-  // // Режим на батарее: если всё хорошо — уходим спать
-  // if (BATTERY_MODE) {
-  //   if (isConnected && !g_leak) {
-  //     pwr::deepSleepSec(DEBUG_SHORT_SLEEP ? DEBUG_SLEEP_OK_SEC : SLEEP_OK_SEC);
-  //   } else {
-  //     Serial.println(F("[PM] Stay awake (portal active or leak)"));
-  //   }
-  // }
+  if (DEBUG_SHORT_SLEEP){
+    tone(PIN_BUZZER, BUZZ_FREQ_HZ, 10);
+  }  
 }
 
 void loop() {
@@ -72,14 +63,16 @@ void loop() {
   if (!graceInit) {
     g_bootMs = millis();
     graceInit = true;    
-  }
+  }  
+  
+  cap::tick();
 
   static uint32_t lastSense = 0;
   static bool sensorLeak = false;
   uint32_t now = millis();
   if (now - lastSense > 3000) {
     lastSense = now;
-    sensorLeak = sensor::readLeak(ADC_LEAK_THRESHOLD, DEBUG_FORCE_LEAK);
+    sensorLeak = cap::isWet();//sensor::readLeak(ADC_LEAK_THRESHOLD, DEBUG_FORCE_LEAK);
   }
   bool leakNow = sensorLeak || button::testLeak;
 
@@ -98,7 +91,8 @@ void loop() {
       lastSleepCheck = now2;
       bool inhibit = button::inhibitSleep;
       bool graceOver = (now2 - g_bootMs) > BOOT_GRACE_MS;
-      if (g_isConnected && !g_leak && !inhibit && graceOver && !button::holdActive) {
+      bool calibrating = cap::calibrating();
+      if (g_isConnected && !g_leak && !inhibit && graceOver && !button::holdActive && !calibrating) {
         pwr::deepSleepSec(DEBUG_SHORT_SLEEP ? DEBUG_SLEEP_OK_SEC : SLEEP_OK_SEC);
       }
     }

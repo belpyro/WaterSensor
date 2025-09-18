@@ -5,6 +5,7 @@
 #include <config_fs.hpp>
 #include <index_fallback.hpp>
 #include <constants.hpp>
+#include <cap_api.hpp>
 
 static ESP8266WebServer server(80);
 static AppConfig current;
@@ -84,6 +85,7 @@ namespace web {
     server.on("/config", HTTP_POST, handlePostConfig);
     server.on("/reboot", HTTP_POST, handleReboot);
     server.onNotFound([](){ server.send(404, "text/plain", "Not Found"); });
+    capapi::attach(server);
     server.begin();
     setupWebOta();
     Serial.println("[HTTP] Server started");
