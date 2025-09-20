@@ -3,8 +3,8 @@
 #include <Arduino.h>
 
 // Pins and timings
-static const uint8_t PIN_BUZZER    = D5; // GPIO14
-static const uint8_t PIN_VREF      = D1; // GPIO5
+static const uint8_t PIN_BUZZER    = D6; // GPIO14
+static const uint8_t PIN_VREF      = D5; // GPIO5
 static const uint8_t PIN_LEAK_TEST = D2; // GPIO4
 
 static const uint32_t BUZZ_FREQ_HZ   = 2840;

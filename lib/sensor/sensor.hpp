@@ -4,6 +4,6 @@
 
 namespace sensor {
   void begin(uint8_t pinVref);
-  bool readLeak(int adcThreshold, bool debugForce);
+  bool readLeak(bool debugForce);
 }
 #endif

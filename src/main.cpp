@@ -25,9 +25,6 @@ void setup() {
   delay(200);
   Serial.printf("Booting v%s\n", APP_VERSION);
 
-  // pinMode(PIN_VREF, OUTPUT);
-  // digitalWrite(PIN_VREF, HIGH);
-
   cfgfs::beginFS();
   cfgfs::load(g_cfg);
 
@@ -35,10 +32,7 @@ void setup() {
   mdnsu::setup();
   ota::begin();
   web::begin(&g_cfg);
-  cap::begin(PIN_VREF);
-
-  // sensor::begin(PIN_VREF);
-  button::begin(PIN_LEAK_TEST);
+  sensor::begin(PIN_VREF);
   buzzer::begin(PIN_BUZZER);
 
   // Публикация статуса в MQTT один раз при старте
@@ -54,54 +48,18 @@ void setup() {
 
 void loop() {
   web::loop();
-  delay(5);
-  
-  button::tick();
-  // Initialize grace window at first loop iteration (not in setup),
-// so Wi-Fi connect time does not consume BOOT_GRACE_MS.
-  static bool graceInit = false;
-  if (!graceInit) {
-    g_bootMs = millis();
-    graceInit = true;    
-  }  
-  
-  cap::tick();
+  delay(50);
 
-  static uint32_t lastSense = 0;
-  static bool sensorLeak = false;
-  uint32_t now = millis();
-  if (now - lastSense > 3000) {
-    lastSense = now;
-    sensorLeak = cap::isWet();//sensor::readLeak(ADC_LEAK_THRESHOLD, DEBUG_FORCE_LEAK);
-  }
-  bool leakNow = sensorLeak || button::testLeak;
+  bool sensorLeak = sensor::readLeak(DEBUG_FORCE_LEAK);
 
-  // Apply immediate changes to leak state
-  if (leakNow != g_leak) {
-    g_leak = leakNow;
+  if(sensorLeak != g_leak){
+    g_leak = sensorLeak;
     buzzer::setLeak(g_leak);
     (void)mqt::publishStatus(g_leak);
-  }
-
-  // Решение о сне
-  static uint32_t lastSleepCheck = 0;
-  if (BATTERY_MODE) {
-    uint32_t now2 = millis();
-    if (now2 - lastSleepCheck > 500) {
-      lastSleepCheck = now2;
-      bool inhibit = button::inhibitSleep;
-      bool graceOver = (now2 - g_bootMs) > BOOT_GRACE_MS;
-      bool calibrating = cap::calibrating();
-      if (g_isConnected && !g_leak && !inhibit && graceOver && !button::holdActive && !calibrating) {
-        pwr::deepSleepSec(DEBUG_SHORT_SLEEP ? DEBUG_SLEEP_OK_SEC : SLEEP_OK_SEC);
-      }
-    }
-  }
+  }  
 
   ota::handle();
-  delay(5);
+  delay(50);
 
   buzzer::tick(BUZZ_ON_MS, BUZZ_PERIOD_MS, BUZZ_FREQ_HZ);
-
-  delay(5);
 }

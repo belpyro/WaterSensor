@@ -98,7 +98,7 @@
       Status: <span id="capState" class="badge">Not calibrated</span>
     </div>
 
-    <p class="muted">Use when the sensor area is <strong>dry</strong>. Values refresh every 5 seconds.</p>
+    <p class="muted">Use when the sensor area is <strong>dry</strong>. Values refresh every 60 seconds.</p>
     <div id="capstats" class="kv">Loading…</div>
     <div class="actions">
       <button class="btn" id="capStart">Start 5s Calibrate</button>
@@ -205,7 +205,7 @@ calibrating: ${s.calibrating}`;
       }
     }
     // refresh every second (as per text)
-    setInterval(refresh, 5000);
+    setInterval(refresh, 60000);
     refresh();
 
     document.getElementById('capStart').onclick = async ()=>{
